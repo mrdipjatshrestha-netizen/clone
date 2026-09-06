@@ -41,7 +41,6 @@
             display: grid;
             gap: 6px;
             width: 100%;
-            /* Adjust height to account for top bar and bottom toolbar */
             height: calc(100vh - 120px);
             height: calc(100dvh - 120px);
             padding: 6px;
@@ -66,7 +65,7 @@
             display: flex;
             align-items: center;
             justify-content: center;
-            transform: translateZ(0); /* Hardware acceleration for zero lag */
+            transform: translateZ(0);
         }
 
         .video-card video {
@@ -79,7 +78,7 @@
 </head>
 <body class="flex flex-col justify-between items-center" onload="autoJoinRoom()">
     
-    <!-- Top Bar with Minimal Status -->
+    <!-- Top Bar with Status -->
     <div class="w-full flex justify-between items-center px-4 py-2.5 bg-gray-800/90 border-b border-gray-700 backdrop-blur z-20">
         <div class="flex items-center gap-2">
             <span class="w-3 h-3 bg-emerald-500 rounded-full animate-pulse"></span>
@@ -100,7 +99,7 @@
     <!-- Floating Likes Overlay Container -->
     <div id="likes-container" class="absolute inset-0 pointer-events-none overflow-hidden"></div>
 
-    <!-- Bottom Control Toolbar (All controls moved here) -->
+    <!-- Bottom Control Toolbar -->
     <div class="w-full bg-gray-900/95 border-t border-gray-800 py-3 px-4 flex justify-center items-center gap-2 z-20 backdrop-blur">
         <button onclick="toggleMic()" id="mic-btn" class="flex-1 max-w-[75px] bg-gray-800 hover:bg-gray-700 active:scale-95 py-2.5 rounded-xl text-[11px] font-semibold transition flex flex-col items-center gap-1 border border-gray-700">
             <span>🎤</span> Mute
@@ -159,7 +158,7 @@
                 audio: {
                     echoCancellation: true,
                     noiseSuppression: true,
-                    autoGainControl: true // Helps normalize and optimize audio loudness
+                    autoGainControl: true
                 }
             };
 
@@ -228,10 +227,16 @@
             socket.emit('buzz-user', targetId);
         }
 
+        // Trigger device vibration pattern when buzzed
         socket.on('buzzed', (data) => {
             const container = document.getElementById(`container-${data.sender}`) || document.getElementById('local-container');
             container.classList.add('buzz-animation');
-            if (navigator.vibrate) navigator.vibrate([200, 100, 200]);
+            
+            // Vibrate mobile device (vibrate for 300ms, pause 100ms, vibrate 300ms)
+            if (navigator.vibrate) {
+                navigator.vibrate([300, 100, 300, 100, 300]);
+            }
+
             setTimeout(() => container.classList.remove('buzz-animation'), 1000);
         });
 
