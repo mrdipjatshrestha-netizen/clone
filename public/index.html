@@ -95,9 +95,9 @@
 
     <!-- No-Scroll Dynamic Video Grid -->
     <div id="video-grid" class="layout-1">
-        <!-- Local Video Container -->
+        <!-- Local Video Container with Mirror Effect -->
         <div id="local-container" class="video-card">
-            <video id="localVideo" autoplay muted playsinline></video>
+            <video id="localVideo" autoplay muted playsinline style="transform: scaleX(-1);"></video>
             <div class="absolute bottom-2 left-2 bg-black/70 px-2 py-0.5 text-[10px] rounded">You</div>
         </div>
     </div>
@@ -245,11 +245,10 @@
         // --- WebRTC Signaling & Peer Sync ---
         socket.on('existing-users', async (users) => {
             for (const userId of users) {
-                await createPeerConnection(userId, true); // Existing users call the new user
+                await createPeerConnection(userId, true);
             }
         });
 
-        // FIX: Listen when a new user joins the room so we can prepare to accept their offer
         socket.on('user-joined', (userId) => {
             console.log(`New user joined: ${userId}`);
         });
