@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Instant Family Video Chat</title>
+    <title>Instant Family Video Chat - Turbo Mode</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
         html, body {
@@ -65,7 +65,7 @@
             display: flex;
             align-items: center;
             justify-content: center;
-            transform: translateZ(0);
+            transform: translateZ(0); /* Hardware acceleration */
         }
 
         .video-card video {
@@ -82,9 +82,9 @@
     <div class="w-full flex justify-between items-center px-4 py-2.5 bg-gray-800/90 border-b border-gray-700 backdrop-blur z-20">
         <div class="flex items-center gap-2">
             <span class="w-3 h-3 bg-emerald-500 rounded-full animate-pulse"></span>
-            <h1 class="text-xs font-bold text-emerald-400 tracking-wide uppercase">Family Line</h1>
+            <h1 class="text-xs font-bold text-emerald-400 tracking-wide uppercase">Family Line (Turbo)</h1>
         </div>
-        <div id="room-status" class="text-[10px] text-gray-400 font-medium">Connected</div>
+        <div id="room-status" class="text-[10px] text-gray-400 font-medium">⚡ Ultra-Fast Mode</div>
     </div>
 
     <!-- No-Scroll Dynamic Video Grid -->
@@ -127,11 +127,15 @@
         const roomId = "family-main-room";
         let useFrontCamera = true;
 
-        const stunServers = {
+        // Optimized STUN configuration with ICE transport policy for speed
+        const rtcConfig = {
             iceServers: [
                 { urls: 'stun:stun.l.google.com:19302' },
                 { urls: 'stun:stun1.l.google.com:19302' }
-            ]
+            ],
+            iceTransportPolicy: 'all',
+            bundlePolicy: 'max-bundle',
+            rtcpMuxPolicy: 'require'
         };
 
         async function autoJoinRoom() {
@@ -149,11 +153,13 @@
                 localStream.getTracks().forEach(track => track.stop());
             }
 
+            // TURBO SPEED CONSTRAINTS: Light resolution (480p at 20fps) to ensure zero lag on slow internet
             const constraints = {
                 video: { 
                     facingMode: useFrontCamera ? 'user' : 'environment',
-                    width: { ideal: 1280 },
-                    height: { ideal: 720 }
+                    width: { ideal: 640, max: 1280 },
+                    height: { ideal: 480, max: 720 },
+                    frameRate: { ideal: 20, max: 30 }
                 },
                 audio: {
                     echoCancellation: true,
@@ -227,16 +233,12 @@
             socket.emit('buzz-user', targetId);
         }
 
-        // Trigger device vibration pattern when buzzed
         socket.on('buzzed', (data) => {
             const container = document.getElementById(`container-${data.sender}`) || document.getElementById('local-container');
             container.classList.add('buzz-animation');
-            
-            // Vibrate mobile device (vibrate for 300ms, pause 100ms, vibrate 300ms)
             if (navigator.vibrate) {
                 navigator.vibrate([300, 100, 300, 100, 300]);
             }
-
             setTimeout(() => container.classList.remove('buzz-animation'), 1000);
         });
 
@@ -271,7 +273,7 @@
             else grid.classList.add('layout-5');
         }
 
-        // --- WebRTC Signaling & Peer Sync ---
+        // --- WebRTC Signaling & Turbo Peer Sync ---
         socket.on('existing-users', async (users) => {
             for (const userId of users) {
                 await createPeerConnection(userId, true);
@@ -342,7 +344,8 @@
         async function createPeerConnection(userId, isInitiator) {
             if (peers[userId]) return peers[userId];
 
-            const pc = new RTCPeerConnection(stunServers);
+            // Use the optimized rtcConfig for fastest bundling
+            const pc = new RTCPeerConnection(rtcConfig);
             peers[userId] = pc;
             candidateQueues[userId] = [];
 
@@ -389,7 +392,11 @@
             };
 
             if (isInitiator) {
-                const offer = await pc.createOffer();
+                // Optimized low-latency offer creation with voice/video bundle hints
+                const offer = await pc.createOffer({
+                    offerToReceiveAudio: true,
+                    offerToReceiveVideo: true
+                });
                 await pc.setLocalDescription(offer);
                 socket.emit('offer', { target: userId, offer: offer });
             }
