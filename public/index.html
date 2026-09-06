@@ -225,12 +225,19 @@
         }
 
         function endCall() {
+            // Stop local media tracks
             if (localStream) {
                 localStream.getTracks().forEach(track => track.stop());
             }
-            socket.disconnect();
+            // Disconnect socket connection
+            if (typeof socket !== 'undefined' && socket.connected) {
+                socket.disconnect();
+            }
+            // Attempt to close window and fallback to blank screen
             window.close();
-            window.location.href = "about:blank";
+            setTimeout(() => {
+                window.location.href = "about:blank";
+            }, 100);
         }
 
         function triggerBuzz(targetId) {
