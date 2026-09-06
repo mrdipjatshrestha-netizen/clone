@@ -41,8 +41,9 @@
             display: grid;
             gap: 6px;
             width: 100%;
-            height: calc(100vh - 70px);
-            height: calc(100dvh - 70px);
+            /* Adjust height to account for top bar and bottom toolbar */
+            height: calc(100vh - 120px);
+            height: calc(100dvh - 120px);
             padding: 6px;
             box-sizing: border-box;
             align-content: center;
@@ -65,32 +66,26 @@
             display: flex;
             align-items: center;
             justify-content: center;
+            transform: translateZ(0); /* Hardware acceleration for zero lag */
         }
 
         .video-card video {
             width: 100%;
             height: 100%;
             object-fit: cover;
+            transform: translateZ(0);
         }
     </style>
 </head>
 <body class="flex flex-col justify-between items-center" onload="autoJoinRoom()">
     
-    <!-- Top Bar with Status & Toolbar -->
-    <div class="w-full flex justify-between items-center px-3 py-2 bg-gray-800/80 border-b border-gray-700 backdrop-blur z-20">
-        <div class="flex items-center gap-1.5">
-            <span class="w-2.5 h-2.5 bg-emerald-500 rounded-full animate-pulse"></span>
-            <h1 class="text-xs font-bold text-emerald-400">Family Line</h1>
+    <!-- Top Bar with Minimal Status -->
+    <div class="w-full flex justify-between items-center px-4 py-2.5 bg-gray-800/90 border-b border-gray-700 backdrop-blur z-20">
+        <div class="flex items-center gap-2">
+            <span class="w-3 h-3 bg-emerald-500 rounded-full animate-pulse"></span>
+            <h1 class="text-xs font-bold text-emerald-400 tracking-wide uppercase">Family Line</h1>
         </div>
-
-        <!-- In-Call Control Toolbar -->
-        <div class="flex items-center gap-1">
-            <button onclick="toggleMic()" id="mic-btn" class="bg-gray-700 hover:bg-gray-600 px-2 py-1 rounded text-[10px] font-medium transition">Mute</button>
-            <button onclick="toggleCam()" id="cam-btn" class="bg-gray-700 hover:bg-gray-600 px-2 py-1 rounded text-[10px] font-medium transition">Cam Off</button>
-            <button onclick="switchCamera()" id="flip-btn" class="bg-blue-600 hover:bg-blue-500 px-2 py-1 rounded text-[10px] font-medium transition">🔄 Flip</button>
-            <button onclick="sendLike()" class="bg-pink-600 hover:bg-pink-500 px-2 py-1 rounded text-[10px] font-medium transition">❤️</button>
-            <button onclick="endCall()" class="bg-red-600 hover:bg-red-500 px-2.5 py-1 rounded text-[10px] font-bold transition">📞 End</button>
-        </div>
+        <div id="room-status" class="text-[10px] text-gray-400 font-medium">Connected</div>
     </div>
 
     <!-- No-Scroll Dynamic Video Grid -->
@@ -98,12 +93,31 @@
         <!-- Local Video Container with Mirror Effect -->
         <div id="local-container" class="video-card">
             <video id="localVideo" autoplay muted playsinline style="transform: scaleX(-1);"></video>
-            <div class="absolute bottom-2 left-2 bg-black/70 px-2 py-0.5 text-[10px] rounded">You</div>
+            <div class="absolute bottom-2 left-2 bg-black/70 px-2 py-0.5 text-[10px] rounded backdrop-blur">You</div>
         </div>
     </div>
 
     <!-- Floating Likes Overlay Container -->
     <div id="likes-container" class="absolute inset-0 pointer-events-none overflow-hidden"></div>
+
+    <!-- Bottom Control Toolbar (All controls moved here) -->
+    <div class="w-full bg-gray-900/95 border-t border-gray-800 py-3 px-4 flex justify-center items-center gap-2 z-20 backdrop-blur">
+        <button onclick="toggleMic()" id="mic-btn" class="flex-1 max-w-[75px] bg-gray-800 hover:bg-gray-700 active:scale-95 py-2.5 rounded-xl text-[11px] font-semibold transition flex flex-col items-center gap-1 border border-gray-700">
+            <span>🎤</span> Mute
+        </button>
+        <button onclick="toggleCam()" id="cam-btn" class="flex-1 max-w-[75px] bg-gray-800 hover:bg-gray-700 active:scale-95 py-2.5 rounded-xl text-[11px] font-semibold transition flex flex-col items-center gap-1 border border-gray-700">
+            <span>📹</span> Cam Off
+        </button>
+        <button onclick="switchCamera()" id="flip-btn" class="flex-1 max-w-[75px] bg-blue-600/80 hover:bg-blue-600 active:scale-95 py-2.5 rounded-xl text-[11px] font-semibold transition flex flex-col items-center gap-1 border border-blue-500">
+            <span>🔄</span> Flip
+        </button>
+        <button onclick="sendLike()" class="flex-1 max-w-[75px] bg-pink-600/80 hover:bg-pink-600 active:scale-95 py-2.5 rounded-xl text-[11px] font-semibold transition flex flex-col items-center gap-1 border border-pink-500">
+            <span>❤️</span> Love
+        </button>
+        <button onclick="endCall()" class="flex-1 max-w-[75px] bg-red-600 hover:bg-red-500 active:scale-95 py-2.5 rounded-xl text-[11px] font-bold transition flex flex-col items-center gap-1 border border-red-500 shadow-lg shadow-red-900/30">
+            <span>📞</span> End
+        </button>
+    </div>
 
     <script src="/socket.io/socket.io.js"></script>
     <script>
@@ -137,8 +151,16 @@
             }
 
             const constraints = {
-                video: { facingMode: useFrontCamera ? 'user' : 'environment' },
-                audio: true
+                video: { 
+                    facingMode: useFrontCamera ? 'user' : 'environment',
+                    width: { ideal: 1280 },
+                    height: { ideal: 720 }
+                },
+                audio: {
+                    echoCancellation: true,
+                    noiseSuppression: true,
+                    autoGainControl: true // Helps normalize and optimize audio loudness
+                }
             };
 
             localStream = await navigator.mediaDevices.getUserMedia(constraints);
@@ -176,8 +198,9 @@
             if (audioTrack) {
                 audioTrack.enabled = !audioTrack.enabled;
                 const btn = document.getElementById('mic-btn');
-                btn.textContent = audioTrack.enabled ? 'Mute' : 'Unmute';
-                btn.classList.toggle('bg-red-600', !audioTrack.enabled);
+                btn.innerHTML = audioTrack.enabled ? '<span>🎤</span> Mute' : '<span>🎤</span> Unmute';
+                btn.classList.toggle('bg-red-900/60', !audioTrack.enabled);
+                btn.classList.toggle('border-red-500', !audioTrack.enabled);
             }
         }
 
@@ -186,8 +209,9 @@
             if (videoTrack) {
                 videoTrack.enabled = !videoTrack.enabled;
                 const btn = document.getElementById('cam-btn');
-                btn.textContent = videoTrack.enabled ? 'Cam Off' : 'Cam On';
-                btn.classList.toggle('bg-red-600', !videoTrack.enabled);
+                btn.innerHTML = videoTrack.enabled ? '<span>📹</span> Cam Off' : '<span>📹</span> Cam On';
+                btn.classList.toggle('bg-red-900/60', !videoTrack.enabled);
+                btn.classList.toggle('border-red-500', !videoTrack.enabled);
             }
         }
 
@@ -226,7 +250,7 @@
             heart.className = 'floating-like';
             heart.textContent = '❤️';
             heart.style.left = `${Math.random() * 80 + 10}%`;
-            heart.style.bottom = '20px';
+            heart.style.bottom = '80px';
             likesContainer.appendChild(heart);
             setTimeout(() => heart.remove(), 1500);
         }
@@ -342,8 +366,8 @@
                     video.play().catch(e => console.log("Autoplay handled:", e));
 
                     const label = document.createElement('div');
-                    label.className = 'absolute bottom-2 left-2 bg-black/70 px-2 py-0.5 text-[10px] rounded flex items-center justify-between w-[90%]';
-                    label.innerHTML = `<span>Family Member</span> <button onclick="triggerBuzz('${userId}')" class="bg-red-500/85 px-2 py-0.5 rounded text-[9px] font-bold">🔔 Buzz</button>`;
+                    label.className = 'absolute bottom-2 left-2 bg-black/70 px-2 py-0.5 text-[10px] rounded flex items-center justify-between w-[95%] backdrop-blur';
+                    label.innerHTML = `<span>Family Member</span> <button onclick="triggerBuzz('${userId}')" class="bg-red-500/90 px-2 py-0.5 rounded text-[9px] font-bold active:scale-95 transition">🔔 Buzz</button>`;
 
                     container.appendChild(video);
                     container.appendChild(label);
