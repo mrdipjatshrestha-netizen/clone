@@ -2,12 +2,10 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <!-- Viewport locked to prevent page zooming on mobile -->
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Instant Family Video Chat - Turbo Mode</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
-        /* Prevent pinch-to-zoom and double-tap zoom gestures globally */
         html, body {
             height: 100vh;
             height: 100dvh;
@@ -69,7 +67,7 @@
             display: flex;
             align-items: center;
             justify-content: center;
-            transform: translateZ(0); /* Hardware acceleration */
+            transform: translateZ(0);
         }
 
         .video-card video {
@@ -80,8 +78,20 @@
         }
     </style>
 </head>
-<body class="flex flex-col justify-between items-center" onload="autoJoinRoom()">
+<body class="flex flex-col justify-between items-center">
     
+    <!-- Welcome Overlay (Required by browser security to unlock camera/mic & full screen) -->
+    <div id="welcome-overlay" class="absolute inset-0 bg-gray-900 z-50 flex flex-col items-center justify-center p-6 text-center">
+        <div class="max-w-xs w-full bg-gray-800 border border-gray-700 p-6 rounded-2xl shadow-2xl flex flex-col items-center gap-4">
+            <span class="text-4xl">👨‍👩‍👧‍👦</span>
+            <h2 class="text-lg font-bold text-emerald-400">Family Line</h2>
+            <p class="text-xs text-gray-300">Tap below to enter full screen and connect with your family instantly.</p>
+            <button onclick="startApp()" class="w-full bg-emerald-600 hover:bg-emerald-500 active:scale-95 py-3 rounded-xl font-bold text-sm shadow-lg shadow-emerald-900/40 transition">
+                🚀 Join Call Now
+            </button>
+        </div>
+    </div>
+
     <!-- Top Bar with Status -->
     <div class="w-full flex justify-between items-center px-4 py-2.5 bg-gray-800/90 border-b border-gray-700 backdrop-blur z-20">
         <div class="flex items-center gap-2">
@@ -131,7 +141,6 @@
         const roomId = "family-main-room";
         let useFrontCamera = true;
 
-        // Optimized turbo STUN configuration
         const rtcConfig = {
             iceServers: [
                 { urls: 'stun:stun.l.google.com:19302' },
@@ -142,7 +151,23 @@
             rtcpMuxPolicy: 'require'
         };
 
-        async function autoJoinRoom() {
+        // Triggered by the user clicking "Join Call Now"
+        async function startApp() {
+            // 1. Hide welcome screen
+            document.getElementById('welcome-overlay').style.display = 'none';
+
+            // 2. Request Full Screen Mode
+            try {
+                if (document.documentElement.requestFullscreen) {
+                    document.documentElement.requestFullscreen();
+                } else if (document.documentElement.webkitRequestFullscreen) {
+                    document.documentElement.webkitRequestFullscreen();
+                }
+            } catch (e) {
+                console.log("Full screen request skipped:", e);
+            }
+
+            // 3. Initialize camera/microphone and join socket room
             try {
                 await setupCameraStream();
                 socket.emit('join-room', roomId);
@@ -157,7 +182,6 @@
                 localStream.getTracks().forEach(track => track.stop());
             }
 
-            // Low-bandwidth constraints for smooth operation on slow Wi-Fi
             const constraints = {
                 video: { 
                     facingMode: useFrontCamera ? 'user' : 'environment',
@@ -237,15 +261,12 @@
             socket.emit('buzz-user', targetId);
         }
 
-        // Handle incoming buzz: shake screen + trigger device vibration
         socket.on('buzzed', (data) => {
             const container = document.getElementById(`container-${data.sender}`) || document.getElementById('local-container');
             container.classList.add('buzz-animation');
-            
             if (navigator.vibrate) {
                 navigator.vibrate([300, 100, 300, 100, 300]);
             }
-
             setTimeout(() => container.classList.remove('buzz-animation'), 1000);
         });
 
